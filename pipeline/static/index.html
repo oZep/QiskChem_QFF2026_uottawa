@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantum Chemistry Lab — SQD & VQE</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#14161a;--mute:#656d7a;--line:#e2e5ea;--acc:#5b5bf0;--ok:#16a34a;--bad:#dc2626;--chip:#eef0ff}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1013;--card:#171a1f;--ink:#eceef2;--mute:#9099a6;--line:#262b33;--acc:#8b8bff;--chip:#22253a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:20px 28px;border-bottom:1px solid var(--line)}h1{margin:0;font-size:18px}header p{margin:2px 0 0;color:var(--mute);font-size:13px}
+main{display:grid;grid-template-columns:380px 1fr;gap:20px;padding:20px 28px;max-width:1200px;margin:auto}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+label{display:block;font-size:12px;font-weight:600;color:var(--mute);margin:14px 0 5px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{font-family:ui-monospace,Menlo,monospace;font-size:13px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;padding:8px;border:0;background:none;color:var(--mute);font:inherit;cursor:pointer}.seg button.on{background:var(--acc);color:#fff}
+.hint{font-size:12px;color:var(--mute);margin-top:4px}.size{margin-top:12px;padding:8px 10px;border-radius:8px;background:var(--chip);font-size:13px}.size.warn{background:#fee2e2;color:var(--bad)}
+#go{width:100%;margin-top:18px;padding:11px;border:0;border-radius:9px;background:var(--acc);color:#fff;font:600 15px inherit;cursor:pointer}#go:disabled{opacity:.5}
+.step{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.step:last-child{border:0}
+.dot{flex:none;width:24px;height:24px;border-radius:50%;background:var(--ok);color:#fff;font-size:12px;display:grid;place-items:center}
+.step b{display:block}.step span{color:var(--mute);font-size:13px}.t{margin-left:auto;color:var(--mute);font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.m{padding:12px;border:1px solid var(--line);border-radius:10px}.m small{color:var(--mute);display:block;font-size:12px}.m div{font:600 18px ui-monospace,Menlo,monospace}
+table{width:100%;border-collapse:collapse;font:13px ui-monospace,Menlo,monospace}td,th{padding:5px 6px;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--mute);font-weight:600}
+.bar{height:8px;background:var(--acc);border-radius:4px}.kept{color:var(--ok)}h3{margin:18px 0 6px;font-size:14px}.err{color:var(--bad)}
+#empty{color:var(--mute);text-align:center;padding:50px 0}
+</style></head><body>
+<header><h1>Quantum Chemistry Lab</h1><p>Molecule → trial circuit → measured configurations → selected subspace → diagonalization → energy</p></header>
+<main>
+<section class="card">
+  <label style="margin-top:0">Example</label>
+  <select id="preset"><option value="">Custom…</option></select>
+  <label>Geometry (Å, one atom per line or “;” separated)</label><textarea id="atoms" rows="4"></textarea>
+  <div class="row"><div><label>Charge</label><input id="charge" type="number" value="0"></div><div><label>Basis</label><select id="basis"><option>sto-3g</option><option>6-31g</option></select></div></div>
+  <div class="row"><div><label>Frozen core orbitals</label><input id="frozen" type="number" min="0" value="0"></div><div><label>Active orbitals (blank = all)</label><input id="active" type="number" min="1"></div></div>
+  <div id="size" class="size">—</div>
+  <label>Method</label><div class="seg" id="method"><button data-v="sqd" class="on">SQD</button><button data-v="vqe">VQE</button></div>
+  <div id="sqdopts"><div class="row"><div><label>Shots</label><input id="shots" type="number" value="1000"></div><div><label>Seed</label><input id="seed" type="number" value="0"></div></div>
+    <div class="row"><div><label>Max spin-strings kept (optional)</label><input id="maxs" type="number" min="1"></div><div><label>Always include HF</label><select id="hf"><option value="">No</option><option value="1">Yes</option></select></div></div>
+    <div class="hint">Smaller subspace = cheaper solve; fewer shots = fewer configurations found.</div></div>
+  <div id="vqeopts" hidden><label>Max optimizer iterations (hardware default 30)</label><input id="maxit" type="number" placeholder="auto"></div>
+  <label>Run on</label><div class="seg" id="hw"><button data-v="" class="on">Simulator</button><button data-v="1">IBM hardware</button></div>
+  <div id="hwopts" hidden><label>IBM API token (not stored; or set IBM_TOKEN on the server)</label><input id="token" type="password" autocomplete="off">
+    <label>Instance CRN (optional)</label><input id="inst"></div>
+  <button id="go">Run</button>
+</section>
+<section class="card"><div id="empty">Choose a molecule and press Run.</div><div id="out"></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const PRE={"H₂":["H 0 0 0; H 0 0 0.735",0],"LiH":["Li 0 0 0; H 0 0 1.6",1],"BeH₂":["Be 0 0 0; H 0 0 1.33; H 0 0 -1.33",1],"H₂O":["O 0 0 0.12; H 0 0.76 -0.48; H 0 -0.76 -0.48",1]};
+for(const k in PRE)$("preset").add(new Option(k,k));
+$("preset").onchange=e=>{const p=PRE[e.target.value];if(p){$("atoms").value=p[0].replaceAll("; ","\n");$("frozen").value=p[1];$("active").value="";inspect()}};
+function seg(id,cb){$(id).onclick=e=>{if(!e.target.dataset)return;[...$(id).children].forEach(b=>b.classList.toggle("on",b===e.target));cb&&cb(e.target.dataset.v)}}
+let method="sqd",hw="";
+seg("method",v=>{method=v;$("sqdopts").hidden=v!=="sqd";$("vqeopts").hidden=v!=="vqe"});
+seg("hw",v=>{hw=v;$("hwopts").hidden=!v});
+const payload=()=>({atoms:$("atoms").value.trim().replaceAll("\n","; "),charge:+$("charge").value,basis:$("basis").value,frozen_core:+$("frozen").value,
+  n_active:$("active").value?+$("active").value:null,method,shots:+$("shots").value,seed:+$("seed").value,max_strings:$("maxs").value||null,
+  include_hf:!!$("hf").value,max_iter:$("maxit").value||undefined,hardware:!!hw,ibm_token:$("token").value||undefined,ibm_instance:$("inst").value||undefined});
+const post=(u,b)=>fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(r=>r.json());
+let tm;function inspect(){clearTimeout(tm);tm=setTimeout(async()=>{if(!$("atoms").value.trim())return;
+  $("size").textContent="Checking…";const r=await post("/api/inspect",payload());
+  $("size").className="size"+(r.ok?"":" warn");
+  $("size").textContent=r.ok?`${r.qubits} qubits · ${r.active_electrons} active electrons · ${r.determinants} determinants (of ${r.orbitals} orbitals total)`:r.error},400)}
+["atoms","charge","basis","frozen","active"].forEach(i=>$(i).addEventListener("input",inspect));
+const f=(x,d=6)=>(+x).toFixed(d);
+function render(j){let h="";
+  j.steps.forEach((s,i)=>h+=`<div class="step"><div class="dot">${i+1}</div><div><b>${s.name}</b><span>${s.summary}</span>${s.note?`<br><span>${s.note}</span>`:""}</div><div class="t">${s.seconds}s</div></div>`);
+  if(j.status==="running")h+=`<div class="hint">Running…</div>`;
+  if(j.status==="error")h+=`<p class="err">${j.error}</p>`;
+  if(j.result){const r=j.result,c=r.costs;
+    h+=`<div class="grid"><div class="m"><small>${r.method.toUpperCase()} energy (Ha)</small><div>${f(r.energy)}</div></div><div class="m"><small>Exact (active space, Ha)</small><div>${f(r.e_exact)}</div></div>
+    <div class="m"><small>Hartree–Fock (Ha)</small><div>${f(r.e_hf)}</div></div><div class="m"><small>${r.method.toUpperCase()} error (mHa)</small><div>${f(r.error_mha,3)}</div></div>
+    <div class="m"><small>HF error (mHa)</small><div>${f(r.hf_error_mha,3)}</div></div></div>
+    <div class="hint">Exact = exact for this basis, active space and electron count — not an experimental energy. Backend: ${r.backend}.</div>
+    <h3>Cost</h3><table>${Object.entries(c).map(([k,v])=>`<tr><td>${k.replaceAll("_"," ")}</td><td>${v}</td></tr>`).join("")}</table>`;
+    if(r.configs){const mx=r.configs[0].count;h+=`<h3>Most-sampled configurations <small class="hint">[β…][α…], qubit 0 rightmost; ✓ = in solved subspace</small></h3><table>
+      ${r.configs.map(x=>`<tr><td>${x.bits}</td><td>${x.count}</td><td style="width:40%"><div class="bar" style="width:${100*x.count/mx}%"></div></td><td class="kept">${x.kept?"✓":""}</td></tr>`).join("")}</table>`}
+    if(r.trace){const t=r.trace,lo=Math.min(...t),hi=Math.max(...t),n=t.length;
+      const pts=t.map((v,i)=>`${(i/(n-1||1))*300},${50-45*(v-lo)/((hi-lo)||1)}`).join(" ");
+      h+=`<h3>Optimization trace</h3><svg viewBox="0 0 300 55" width="100%" height="90"><polyline fill="none" stroke="var(--acc)" stroke-width="1.5" points="${pts}"/></svg><div class="hint">${f(hi,4)} → ${f(lo,4)} Ha</div>`}}
+  $("out").innerHTML=h}
+$("go").onclick=async()=>{$("empty").hidden=true;$("go").disabled=true;$("out").innerHTML="";
+  const {id}=await post("/api/run",payload());
+  while(true){const j=await fetch("/api/job/"+id).then(r=>r.json());render(j);if(j.status!=="running")break;await new Promise(r=>setTimeout(r,700))}
+  $("go").disabled=false};
+$("preset").value="LiH";$("preset").onchange({target:$("preset")});
+</script></body></html>

@@ -1,0 +1,9 @@
+flask>=3.0
+numpy==2.4.4
+scipy==1.17.1
+pyscf==2.14.0
+qiskit==2.5.2
+qiskit-aer==0.17.2
+qiskit-nature==0.8.0
+qiskit-addon-sqd==0.13.1
+qiskit-ibm-runtime
