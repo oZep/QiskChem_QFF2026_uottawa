@@ -1,9 +1,12 @@
+https://github.com/user-attachments/assets/d8957230-1f38-42c6-a9b2-db33aeda6028
+
 ## Common questions (from the challenge brief), answered with our results
 
 Model: LiH, STO-3G, frozen core (1 orbital), 2 electrons in 5 spatial orbitals = 10 qubits, 25 determinants. Energies are total energies in hartree (Ha); errors are in millihartree (mHa) against the exact energy of the same finite Hamiltonian and (1α, 1β) sector.
 Numbers below are from the notebook's reference run (seeds 0–4). Re-run the notebook to regenerate them; small differences from library versions are possible.
 
 ### 1. Is SQD just VQE with a different name?
+
 **No.** The two methods use the quantum circuit for different jobs.
 
 - **SQD:** the circuit only proposes configurations (which determinants are occupied). A classical solver builds the projected Hamiltonian in that subspace, including off-diagonal elements, and takes its lowest eigenvalue. No parameters are optimised.
