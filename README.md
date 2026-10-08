@@ -66,3 +66,10 @@ If you see SQD below exact, check, in this order: the particle sector, the offse
 - **Where it could matter:** when the sector is large and the solve dimension is the bottleneck. We checked this directionally on H₂O (12 qubits, 225 determinants): SQD reached 1.04 mHa error at solve dimension 81 (HF error 51 mHa). We have not yet run the baseline comparison there.
 
 **Takeaway:** the most useful workflow in our experiment is the CCSD-seeded circuit + SQD with a capped subspace. It matches VQE-quality energies with no optimisation loop. We do not claim quantum advantage.
+
+To run the code, first create a venv:
+```
+cd pipeline
+pip install -r requirements.txt
+python3 app.py
+```
