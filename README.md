@@ -1,3 +1,4 @@
+# Estimate molecular energies with sample-based quantum diagonalization
 https://github.com/user-attachments/assets/d8957230-1f38-42c6-a9b2-db33aeda6028
 
 ## Common questions (from the challenge brief), answered with our results
