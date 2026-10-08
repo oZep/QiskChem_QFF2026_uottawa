@@ -71,5 +71,5 @@ To run the code, first create a venv:
 ```
 cd pipeline
 pip install -r requirements.txt
-python3 app.py
+python app.py
 ```
